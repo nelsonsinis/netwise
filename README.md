@@ -1,6 +1,8 @@
 # Netwise
 
-<img src="logo.jpg" />
+<div style="display: flex; justify-content: center;">
+   <img src="logo.jpg" width="250" />
+</div>
 
 ## Description
 
