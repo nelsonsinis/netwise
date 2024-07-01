@@ -1,39 +1,60 @@
-extern crate pnet;
+use ping::dgramsock::ping;
+use spinach::Spinach;
+use std::net::Ipv4Addr;
+use std::sync::mpsc;
+use std::thread;
+use utils::network;
+
 mod utils;
 
-use std::env::args;
-
-use pnet::datalink::NetworkInterface;
-use utils::{
-    constants::errors::Messages,
-    network::{get_interface::get_interface, scan_network::scan_network},
-};
-
-fn get_interface_from_args(options: &[String]) -> Result<NetworkInterface, &'static str> {
-    let iface_index = options
-        .iter()
-        .position(|item| item == "-i" || item == "--iface");
-
-    match iface_index {
-        Some(value) => {
-            if let Some(iface_value) = options.get(value + 1) {
-                Ok(get_interface(iface_value)?)
-            } else {
-                Err(Messages::InvalidInterface.as_str())
-            }
-        }
-        None => Err(Messages::NoIfaceParameterProvided.as_str()),
-    }
-}
+extern crate ping;
 
 fn main() {
-    let options: Vec<String> = args().collect();
+    let local_ip = network::local_ip::LocalIP::new();
+    let (tx, rx) = mpsc::channel();
 
-    let interface: NetworkInterface = match get_interface_from_args(&options) {
-        Ok(value) => value,
-        Err(error) => panic!("{}", error),
-    };
+    let spinner = Spinach::new("Searching devices in the local network...");
 
-    println!("Interface: {:?}", interface);
-    scan_network(&interface);
+    for last_part in 0..=255 {
+        let tx = tx.clone();
+        let ip_parts = local_ip.as_vec();
+
+        thread::spawn(move || {
+            match ping(
+                std::net::IpAddr::V4(Ipv4Addr::new(
+                    *ip_parts.get(0).unwrap(),
+                    *ip_parts.get(1).unwrap(),
+                    *ip_parts.get(2).unwrap(),
+                    last_part,
+                )),
+                None,
+                None,
+                None,
+                Some(1),
+                None,
+            ) {
+                Ok(_) => {
+                    tx.send(Some(format!(
+                        "{}.{}.{}.{}",
+                        *ip_parts.get(0).unwrap(),
+                        *ip_parts.get(1).unwrap(),
+                        *ip_parts.get(0).unwrap(),
+                        last_part
+                    )))
+                    .unwrap();
+                }
+                Err(_) => tx.send(None).unwrap(),
+            };
+        });
+    }
+
+    let mut results = Vec::new();
+
+    for _ in 0..=255 {
+        if let Some(value) = rx.recv().unwrap() {
+            results.push(value);
+        }
+    }
+
+    spinner.succeed(format!("Devices found: {}", results.len()));
 }

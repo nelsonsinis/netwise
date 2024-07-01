@@ -1,13 +1,13 @@
 pub enum Messages {
-    InvalidInterface,
-    NoIfaceParameterProvided,
+    CannotPossibleToGetIPAddress,
+    CannotPossibleToGetMacAdress,
 }
 
 impl Messages {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Messages::InvalidInterface => "Please, provide a valid interface!",
-            Messages::NoIfaceParameterProvided => "Please, provide -i or -iface parameter!",
+            Messages::CannotPossibleToGetIPAddress => "Cannot possible to get IP address!",
+            Messages::CannotPossibleToGetMacAdress => "Cannot possible to get MAC Address!",
         }
     }
 }
